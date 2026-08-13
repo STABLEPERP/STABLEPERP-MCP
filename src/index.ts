@@ -150,15 +150,15 @@ async function handleGetMarketsLiquidity(args: any) {
   // Cast IDL and Program to any to avoid complex IDL type resolution errors without generating types
   const program = new anchor.Program(idl as any, provider) as any;
 
-  // Fetch symbol mappings from backend API
-  const apiMap: Record<string, string> = {};
+  // Fetch symbol and strike mappings from backend API
+  const apiMap: Record<string, { symbol: string; strike: number }> = {};
   try {
     const res = await fetch("https://stableperp-api-production.up.railway.app/api/markets?network=mainnet-beta");
     const json = await res.json();
     if (json.success && Array.isArray(json.data)) {
       json.data.forEach((m: any) => {
         if (m.address && m.symbol) {
-          apiMap[m.address] = m.symbol;
+          apiMap[m.address] = { symbol: m.symbol, strike: m.strike };
         }
       });
     }
@@ -176,15 +176,16 @@ async function handleGetMarketsLiquidity(args: any) {
 
   for (const mkt of allMarkets) {
     const marketId = mkt.publicKey.toBase58();
+    const mapped = apiMap[marketId];
     
     // Resolve symbol using API mapping, fallback to Unknown
-    let symbol = apiMap[marketId] || "Unknown/USDC";
+    let symbol = mapped ? mapped.symbol : "Unknown/USDC";
     
     if (symbolFilter && !symbol.includes(symbolFilter)) {
       continue;
     }
 
-    const strike = mkt.account.strike.toNumber() / (10 ** 6); // Assuming 6 decimals for strike
+    const strike = mapped ? mapped.strike : mkt.account.strike.toNumber() / (10 ** 6);
 
     // Find writers for this market
     const marketWriters = allWriters.filter((w: any) => w.account.market.toBase58() === marketId);
@@ -261,15 +262,15 @@ async function handleGetWalletPortfolio(args: any) {
   const provider = new anchor.AnchorProvider(connection, {} as any, { commitment: "confirmed" });
   const program = new anchor.Program(idl as any, provider) as any;
 
-  // Fetch symbol mappings from backend API
-  const apiMap: Record<string, string> = {};
+  // Fetch symbol and strike mappings from backend API
+  const apiMap: Record<string, { symbol: string; strike: number }> = {};
   try {
     const res = await fetch("https://stableperp-api-production.up.railway.app/api/markets?network=mainnet-beta");
     const json = await res.json();
     if (json.success && Array.isArray(json.data)) {
       json.data.forEach((m: any) => {
         if (m.address && m.symbol) {
-          apiMap[m.address] = m.symbol;
+          apiMap[m.address] = { symbol: m.symbol, strike: m.strike };
         }
       });
     }
@@ -310,7 +311,8 @@ async function handleGetWalletPortfolio(args: any) {
       const minted = w.account.mintedAmount.toNumber() / (10 ** 6);
       const locked = w.account.lockedAmount.toNumber() / (10 ** 6);
       const marketId = w.account.market.toBase58();
-      const symbol = apiMap[marketId] || "Unknown/USDC";
+      const mapped = apiMap[marketId];
+      const symbol = mapped ? mapped.symbol : "Unknown/USDC";
       portfolioText += `- ${symbol} (Market: ${marketId}) | Minted (Sold): ${minted} | Locked Collateral: ${locked}\n`;
     });
   } else {
