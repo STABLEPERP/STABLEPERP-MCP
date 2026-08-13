@@ -193,9 +193,9 @@ async function handleGetMarketsLiquidity(args: any) {
     let minPremium = Infinity;
 
     for (const w of marketWriters) {
-      const locked = w.account.lockedAmount.toNumber() / (10 ** 6);
       const minted = w.account.mintedAmount.toNumber() / (10 ** 6);
-      const available = locked - minted;
+      const filled = w.account.filledAmount.toNumber() / (10 ** 6);
+      const available = minted - filled;
       
       if (available > 0) {
         totalLiquidity += available;
