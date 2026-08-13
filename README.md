@@ -19,7 +19,7 @@ You can run this server directly via `npx` in any compatible MCP client without 
 2. Add a new MCP Server.
 3. Name: `Stableperp`
 4. Command: `npx`
-5. Args: `-y stableperp-mcp` (Once published to npm) or point directly to the local dist file: `node /path/to/stableperp-mcp/dist/index.js`
+5. Args: `-y stableperp-mcp@latest` (To always fetch the newest bug fixes) or point directly to the local dist file: `node /path/to/stableperp-mcp/dist/index.js`
 
 ### Configuring in Claude Desktop
 Add the following to your `claude_desktop_config.json`:
@@ -28,11 +28,23 @@ Add the following to your `claude_desktop_config.json`:
   "mcpServers": {
     "stableperp": {
       "command": "npx",
-      "args": ["-y", "stableperp-mcp"]
+      "args": ["-y", "stableperp-mcp@latest"],
+      "env": {
+        "RPC_URL": "https://api.mainnet-beta.solana.com",
+        "WEB_UI_BASE_URL": "https://stableperp.tech"
+      }
     }
   }
 }
 ```
+
+*Note for Cursor / Windsurf:* You can set these environment variables directly within the MCP settings UI when adding the server.
+
+## Updating / Troubleshooting
+If your AI assistant is returning outdated or incorrect market data, it may be using a cached version of the MCP Server.
+To force an update to the newest version (e.g., `>=1.0.3`):
+- **Claude Desktop**: Quit the application completely (Cmd+Q / Ctrl+Q) and reopen it. This forces `npx` to check for the `@latest` tag.
+- **Cursor/Windsurf**: Restart the MCP Server from the settings panel, or manually run `npx clear-npx-cache` in your terminal before restarting.
 
 ## Local Development
 
