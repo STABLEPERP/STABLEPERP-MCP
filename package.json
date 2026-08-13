@@ -4,6 +4,9 @@
   "type": "module",
   "description": "Model Context Protocol Server for Stableperp on Solana",
   "main": "dist/index.js",
+  "files": [
+    "dist"
+  ],
   "bin": {
     "stableperp-mcp": "./dist/index.js"
   },
