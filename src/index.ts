@@ -150,6 +150,22 @@ async function handleGetMarketsLiquidity(args: any) {
   // Cast IDL and Program to any to avoid complex IDL type resolution errors without generating types
   const program = new anchor.Program(idl as any, provider) as any;
 
+  // Fetch symbol mappings from backend API
+  const apiMap: Record<string, string> = {};
+  try {
+    const res = await fetch("https://stableperp-api-production.up.railway.app/api/markets?network=mainnet-beta");
+    const json = await res.json();
+    if (json.success && Array.isArray(json.data)) {
+      json.data.forEach((m: any) => {
+        if (m.address && m.symbol) {
+          apiMap[m.address] = m.symbol;
+        }
+      });
+    }
+  } catch (e) {
+    console.warn("Failed to fetch market mappings from API", e);
+  }
+
   // Fetch all Market accounts from the blockchain
   const allMarkets = await program.account.market.all();
 
@@ -161,13 +177,8 @@ async function handleGetMarketsLiquidity(args: any) {
   for (const mkt of allMarkets) {
     const marketId = mkt.publicKey.toBase58();
     
-    // In a real production environment, you might resolve the underlying_mint to a symbol using Token List.
-    // For simplicity, we just show the raw keys or known ones here.
-    const underlyingMintStr = mkt.account.underlyingMint.toBase58();
-    let symbol = "Unknown/USDC";
-    if (underlyingMintStr.startsWith("J9B")) symbol = "BTC/USDC";
-    else if (underlyingMintStr.startsWith("7vx")) symbol = "ETH/USDC";
-    else if (underlyingMintStr.startsWith("Sol")) symbol = "SOL/USDC";
+    // Resolve symbol using API mapping, fallback to Unknown
+    let symbol = apiMap[marketId] || "Unknown/USDC";
     
     if (symbolFilter && !symbol.includes(symbolFilter)) {
       continue;
@@ -249,6 +260,23 @@ async function handleGetWalletPortfolio(args: any) {
   // 2. Fetch WriterPositions to detect shorts
   const provider = new anchor.AnchorProvider(connection, {} as any, { commitment: "confirmed" });
   const program = new anchor.Program(idl as any, provider) as any;
+
+  // Fetch symbol mappings from backend API
+  const apiMap: Record<string, string> = {};
+  try {
+    const res = await fetch("https://stableperp-api-production.up.railway.app/api/markets?network=mainnet-beta");
+    const json = await res.json();
+    if (json.success && Array.isArray(json.data)) {
+      json.data.forEach((m: any) => {
+        if (m.address && m.symbol) {
+          apiMap[m.address] = m.symbol;
+        }
+      });
+    }
+  } catch (e) {
+    console.warn("Failed to fetch market mappings from API", e);
+  }
+
   const allWriters = await program.account.writerPosition.all();
   
   const userWriters = allWriters.filter((w: any) => w.account.writer.toBase58() === walletKey.toBase58());
@@ -281,7 +309,9 @@ async function handleGetWalletPortfolio(args: any) {
     userWriters.forEach((w: any) => {
       const minted = w.account.mintedAmount.toNumber() / (10 ** 6);
       const locked = w.account.lockedAmount.toNumber() / (10 ** 6);
-      portfolioText += `- Market: ${w.account.market.toBase58()} | Minted (Sold): ${minted} | Locked Collateral: ${locked}\n`;
+      const marketId = w.account.market.toBase58();
+      const symbol = apiMap[marketId] || "Unknown/USDC";
+      portfolioText += `- ${symbol} (Market: ${marketId}) | Minted (Sold): ${minted} | Locked Collateral: ${locked}\n`;
     });
   } else {
     portfolioText += `- No Short Positions.\n`;
