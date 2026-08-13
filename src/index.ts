@@ -163,9 +163,11 @@ async function handleGetMarketsLiquidity(args: any) {
     
     // In a real production environment, you might resolve the underlying_mint to a symbol using Token List.
     // For simplicity, we just show the raw keys or known ones here.
-    const underlying = mkt.account.underlyingMint.toBase58();
+    const underlyingMintStr = mkt.account.underlyingMint.toBase58();
     let symbol = "Unknown/USDC";
-    if (underlying === "So11111111111111111111111111111111111111112") symbol = "SOL/USDC";
+    if (underlyingMintStr.startsWith("J9B")) symbol = "BTC/USDC";
+    else if (underlyingMintStr.startsWith("7vx")) symbol = "ETH/USDC";
+    else if (underlyingMintStr.startsWith("Sol")) symbol = "SOL/USDC";
     
     if (symbolFilter && !symbol.includes(symbolFilter)) {
       continue;
@@ -304,13 +306,14 @@ async function handleGenerateTradeLink(args: any) {
     throw new Error("marketId and action are required");
   }
 
-  const tradeUrl = `${WEB_UI_BASE_URL}/trade?market=${marketId}&action=${action.toLowerCase()}`;
-
+  const tradeUrl = `${WEB_UI_BASE_URL}/terminal?market=${encodeURIComponent(marketId)}&action=${encodeURIComponent(action)}`;
+  
   return {
     content: [{
-      type: "text",
-      text: `To safely execute this trade, please visit the following secure Stableperp link:\n${tradeUrl}\n\nYour browser wallet will prompt you to review and sign the transaction.`
-    }],
+        type: "text",
+        text: `To safely execute this trade, please visit the following secure Stableperp link:\n${tradeUrl}\n\nYour browser wallet will prompt you to review and sign the transaction.`
+      }
+    ]
   };
 }
 
